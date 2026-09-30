@@ -1,8 +1,8 @@
 ### Building and running your application
 
 Before the first start, copy `.env.example` to `.env` and replace
-`DJANGO_SECRET_KEY` with a long, random value. Keep `.env` out of version
-control.
+`DJANGO_SECRET_KEY` and `POSTGRES_PASSWORD` with unique local values. Keep
+`.env` out of version control.
 
 When you're ready, start your application by running:
 `docker compose up --build`.

@@ -1,0 +1,104 @@
+User setup guide
+================
+
+Purpose
+-------
+Set up public user accounts for the Django web application using Django's
+built-in authentication system and PostgreSQL. Passwords are hashed by Django;
+never store plaintext passwords or write custom password-hashing logic.
+
+1. Confirm the initial account policy
+-------------------------------------
+- Users sign up with an email address and password.
+- Email addresses are unique.
+- Public users cannot create administrator accounts.
+- Each saved application record belongs to exactly one user.
+
+2. Create the accounts app and user model
+-----------------------------------------
+Do this before running the first Django migration:
+
+    python manage.py startapp accounts
+
+In accounts/models.py:
+
+    from django.contrib.auth.models import AbstractUser
+
+    class User(AbstractUser):
+        pass
+
+In the Django settings module:
+
+    AUTH_USER_MODEL = "accounts.User"
+
+Use settings.AUTH_USER_MODEL, rather than importing the built-in User model,
+for relationships in application models.
+
+3. Configure PostgreSQL and secrets
+-----------------------------------
+- Use PostgreSQL in the planned Docker Compose environment for local work.
+- Use managed PostgreSQL with automated backups and point-in-time recovery in
+  production.
+- Supply DATABASE_URL and DJANGO_SECRET_KEY through uncommitted environment
+  variables and protected deployment secrets.
+- Never commit database passwords, Django secret keys, or .env files.
+
+4. Create the database tables
+-----------------------------
+After configuring the custom user model:
+
+    python manage.py makemigrations accounts
+    python manage.py migrate
+
+5. Create users through Django
+------------------------------
+Use Django's user manager, which hashes passwords automatically:
+
+    User.objects.create_user(
+        username="person@example.com",
+        email="person@example.com",
+        password="their-chosen-password",
+    )
+
+Do not insert a password value directly into the database. For login, use
+Django's authenticate() and login() functions, or the built-in LoginView.
+
+6. Add the essential account pages
+----------------------------------
+- /signup/: use UserCreationForm or a validated form to create an account.
+- /login/: use Django's AuthenticationForm and LoginView.
+- /logout/: use Django's LogoutView and submit logout with POST.
+- /password-reset/: add Django's password-reset views once email delivery is
+  configured.
+
+7. Attach saved data to its owner
+---------------------------------
+Example:
+
+    from django.conf import settings
+    from django.db import models
+
+    class SavedItem(models.Model):
+        owner = models.ForeignKey(
+            settings.AUTH_USER_MODEL,
+            on_delete=models.CASCADE,
+        )
+
+Every read, update, and delete must restrict data to owner=request.user. A
+logged-in user must not be able to view or modify another user's data.
+
+8. Before public launch
+-----------------------
+- Require HTTPS in production.
+- Keep CSRF protection enabled.
+- Use secure, HttpOnly, SameSite session cookies.
+- Rate-limit signup, login, and password-reset endpoints.
+- Verify password-reset tokens expire.
+- Test signup, login, logout, password reset, and user-data isolation.
+- Confirm PostgreSQL backups and recovery are enabled.
+
+References
+----------
+- https://docs.djangoproject.com/en/stable/topics/auth/customizing/
+- https://docs.djangoproject.com/en/stable/topics/auth/passwords/
+- https://docs.djangoproject.com/en/stable/topics/auth/default/

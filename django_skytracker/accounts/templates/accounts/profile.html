@@ -1,0 +1,12 @@
+{% extends "accounts/base.html" %}
+
+{% block title %}Profile | SkyTracker{% endblock %}
+
+{% block content %}
+  <h1>Your profile</h1>
+  <form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit">Save settings</button>
+  </form>
+{% endblock %}

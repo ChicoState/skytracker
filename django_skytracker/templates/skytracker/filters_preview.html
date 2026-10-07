@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Constellation filter preview</title>
+  </head>
+  <body class="filters-preview">
+    <main class="filters-preview__content">
+      <div>
+        <p class="filters-preview__eyebrow">SkyTracker component preview</p>
+        <h1>Constellation filter preview</h1>
+        <p>Search the sample D3-Celestial constellation data without a map or database.</p>
+        <p class="filters-preview__selection" data-preview-selection aria-live="polite">
+          Showing all sample constellations.
+        </p>
+      </div>
+
+      {% include "skytracker/includes/constellation_filters.html" %}
+    </main>
+
+    <script>
+      const filterRoot = document.querySelector("[data-constellation-filters]");
+      const selectionMessage = document.querySelector("[data-preview-selection]");
+
+      const filters = SkyTrackerConstellationFilters.create(filterRoot, {
+        onChange({ matches, selectedId }) {
+          const selected = matches.find(({ id }) => id === selectedId);
+          selectionMessage.textContent = selected
+            ? `Selected: ${selected.name} (${selected.id})`
+            : `Showing ${matches.length} sample constellation${matches.length === 1 ? "" : "s"}.`;
+        },
+      });
+
+      filters.setConstellations([
+        { id: "And", name: "Andromeda" },
+        { id: "Cas", name: "Cassiopeia" },
+        { id: "Ori", name: "Orion" },
+        { id: "Sco", name: "Scorpius" },
+        { id: "UMa", name: "Ursa Major" },
+      ]);
+    </script>
+  </body>
+</html>

@@ -176,7 +176,39 @@ def moon_rise_set(payload):
     return sorted(events)
 
 
-# Read command-line input, fetch the API data, and print the sky report.
+# Fetch the sky data once so both the terminal demo and website use the same result.
+def get_sky_report(location, at=None):
+    instant = parse_at(at)
+    latitude, longitude, label = resolve_location(location)
+    coordinates = f"{latitude},{longitude}"
+    day = instant.strftime("%Y-%m-%d")
+    sidereal_query = urlencode(
+        {
+            "date": day,
+            "time": instant.strftime("%H:%M:%S"),
+            "coords": coordinates,
+            "reps": 1,
+            "intv_mag": 1,
+            "intv_unit": "seconds",
+        }
+    )
+    moon_query = urlencode({"date": day, "coords": coordinates, "tz": 0})
+    sidereal = parse_lmst(fetch_json(f"{SIDEREAL_URL}?{sidereal_query}", "USNO sidereal time"))
+    moon_events = moon_rise_set(fetch_json(f"{MOON_URL}?{moon_query}", "USNO Moon events"))
+    catalog = fetch_json(CATALOG_URL, "GitHub constellation catalog", "application/vnd.github.raw+json")
+    visible = visible_constellations(catalog, latitude, sidereal)
+    return {
+        "label": label,
+        "latitude": latitude,
+        "longitude": longitude,
+        "instant": instant,
+        "visible": visible,
+        "constellation_count": len(catalog["features"]),
+        "moon_events": moon_events,
+    }
+
+
+# Read command-line input, fetch the sky report, and print it.
 def main():
     parser = argparse.ArgumentParser(
         description="Fetch approximate above-horizon constellations and Moon rise/set for a location. No API key needed."
@@ -186,37 +218,19 @@ def main():
     args = parser.parse_args()
 
     try:
-        instant = parse_at(args.at)
-        latitude, longitude, label = resolve_location(args.location)
-        coordinates = f"{latitude},{longitude}"
-        day = instant.strftime("%Y-%m-%d")
-        sidereal_query = urlencode(
-            {
-                "date": day,
-                "time": instant.strftime("%H:%M:%S"),
-                "coords": coordinates,
-                "reps": 1,
-                "intv_mag": 1,
-                "intv_unit": "seconds",
-            }
-        )
-        moon_query = urlencode({"date": day, "coords": coordinates, "tz": 0})
-        sidereal = parse_lmst(fetch_json(f"{SIDEREAL_URL}?{sidereal_query}", "USNO sidereal time"))
-        moon_events = moon_rise_set(fetch_json(f"{MOON_URL}?{moon_query}", "USNO Moon events"))
-        catalog = fetch_json(CATALOG_URL, "GitHub constellation catalog", "application/vnd.github.raw+json")
-        visible = visible_constellations(catalog, latitude, sidereal)
+        report = get_sky_report(args.location, args.at)
     except DemoError as exc:
         parser.exit(2, f"error: {exc}\n")
 
-    print(f"Location: {label} ({latitude:.4f}, {longitude:.4f})")
-    print(f"Sky at: {instant:%Y-%m-%d %H:%M:%S} UTC")
-    print(f"Constellation reference points above horizon: {len(visible)} of {len(catalog['features'])}")
-    for name, altitude in visible:
+    print(f"Location: {report['label']} ({report['latitude']:.4f}, {report['longitude']:.4f})")
+    print(f"Sky at: {report['instant']:%Y-%m-%d %H:%M:%S} UTC")
+    print(f"Constellation reference points above horizon: {len(report['visible'])} of {report['constellation_count']}")
+    for name, altitude in report["visible"]:
         print(f"  {name}: {altitude:.1f}°")
-    print(f"Moon rise/set on {day} (UT1, approximately UTC):")
-    for clock, event in moon_events:
+    print(f"Moon rise/set on {report['instant']:%Y-%m-%d} (UT1, approximately UTC):")
+    for clock, event in report["moon_events"]:
         print(f"  {clock} {event}")
-    present_events = {event for _, event in moon_events}
+    present_events = {event for _, event in report["moon_events"]}
     for event in ("Rise", "Set"):
         if event not in present_events:
             print(f"  {event}: no event on this date")

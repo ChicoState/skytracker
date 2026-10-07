@@ -8,6 +8,9 @@ When you're ready, start your application by running:
 `docker compose up --build`.
 
 Your application will be available at http://localhost:8000.
+Search for a city such as `Chico, CA` to see constellation reference points
+above the horizon and today's Moon rise/set times. The demo uses public APIs
+and does not need an API key.
 
 To create the local database tables (required for the Django admin and other
 database-backed features), run:

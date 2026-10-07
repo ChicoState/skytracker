@@ -2,7 +2,7 @@
 
 ## Goal and fit with the project
 
-Create a small command-line Python demonstration that accepts a location and reports (1) constellation reference points above that location's horizon at a chosen instant and (2) Moon rise/set events on the corresponding date. This proves live API retrieval before the planned Django, HTMX, and PostgreSQL application exists. `infrastructure_plan.md` describes that future app; this demonstration has no Django or database connection and can later supply its fetching and conversion logic to the app.
+Create a small command-line Python demonstration that accepts a location and reports (1) constellation reference points above that location's horizon at a chosen instant and (2) Moon rise/set events on the corresponding date. This proved live API retrieval before the Django site was connected. The standalone script has no Django or database dependency; the Django search page now imports its fetching and conversion logic.
 
 The prior `initial_api_plan.md` explored NASA/JPL close approaches, but Earth approach distance cannot establish visibility from a person's location. `astronomy_events_api_catalog.md` calls out that distinction. Moon rise and set are frequent events calculated for the entered observer, so they fit this location-based demonstration.
 
@@ -13,7 +13,7 @@ The prior `initial_api_plan.md` explored NASA/JPL close approaches, but Earth ap
 - Optional `--at` is an ISO 8601 timestamp with an explicit offset; default is the current UTC instant. Convert it to UTC for the API queries. Report Moon event times on that UTC/UT1 date, not guessed local civil times.
 - Return every catalog **reference point** above the geometric horizon at that instant, sorted by altitude. The catalog has 89 points for the 88 IAU constellations because Serpens has two parts. A point above the horizon is an approximation of a constellation's presence in the sky; a constellation edge may be above the horizon even when its reference point is not. Weather, sunlight, obstructions, and boundary intersection are outside this prototype.
 - Return every Moon **Rise** and **Set** event that the USNO response includes for that date. Some dates or polar locations may have no rise or set. Other astronomy event families are outside this demonstration.
-- Fail with a short, nonzero-exit error on invalid input or an API/schema failure. No credentials, persistent output, scheduler, or app integration.
+- Fail with a short, nonzero-exit error on invalid input or an API/schema failure. No credentials, persistent output, or scheduler are needed.
 
 ## API choices
 
@@ -53,6 +53,12 @@ implementation/.venv/bin/python -m unittest discover -s implementation -p 'test_
 ```
 
 No human API key or setup is required beyond network access. The program reads only public APIs.
+
+## Django web demonstration on Data-Collection
+
+The existing `main` branch was merged into `Data-Collection` without changing `main`. The Django root route now renders a plain search form. A submitted city or coordinate pair calls `get_sky_report()` in `sky_demo.py`, so the CLI and site share the same API requests and altitude calculation. The page shows all above-horizon catalog points and Moon rise/set events. The view does not use the database.
+
+The web changes are limited to the root URL, template directory, a new view and template, and a Dockerfile copy of `implementation/`. Run `docker compose up --build` from the repository root, then open `http://localhost:8000/`. Before the first run, create an ignored `.env` using `.env.example` as described in `README.Docker.md`. No API key is required.
 
 ## Verification completed
 

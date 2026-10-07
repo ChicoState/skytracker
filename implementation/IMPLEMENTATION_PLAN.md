@@ -31,9 +31,19 @@ Use the [USNO altitude relation](https://aa.usno.navy.mil/faq/alt_az): local sid
 1. **Create isolated folder and CLI.** Add `sky_demo.py`, ignore `.venv` and Python caches within this folder, and create a local virtual environment without pip (the WSL Python lacks `ensurepip`; this standard-library demo installs no packages). Check: `--help` describes accepted input and time convention.
 2. **Fetch and interpret live data.** Geocode names only when needed; fetch sidereal time, Moon events, and the complete constellation point catalog with timeouts and response validation. Check: both a place name and a coordinate pair produce identified coordinates and nonempty constellation results; a no-event Moon day does not crash.
 3. **Verify the calculation and failures.** Add small tests for coordinate validation, timestamp validation, altitude geometry, and representative API payload interpretation, then run a live smoke check. Check: tests pass, invalid input exits nonzero, and the live output lists source and limitations.
-4. **Review isolation.** Inspect the final diff and Git status. Check: only new files in `implementation/` were created or changed by this work; existing project files and user material remain untouched.
+4. **Review isolation.** Inspect the final diff and Git status. Check: only demo-related files were created or changed by this work; existing project files and user material remain untouched.
 
 ## Run after implementation
+
+From the repository root, use the short WSL launcher. With no arguments, it asks for a location; it creates the isolated `.venv` on first use if needed.
+
+```bash
+./sky
+./sky "Chico, CA"
+./sky "39.7285,-121.8375" --at 2026-10-07T05:00:00Z
+```
+
+From PowerShell in this repository, use `wsl ./sky` with the same optional arguments. The direct commands below are still available for debugging and tests:
 
 ```bash
 python3 -m venv --without-pip implementation/.venv
@@ -51,3 +61,4 @@ No human API key or setup is required beyond network access. The program reads o
 - [x] Live `"Chico, CA"` and `"39.7285,-121.8375"` runs succeeded. Both resolved to the same coordinates and returned 37 of 89 constellation reference points at `2026-10-07T05:00:00Z`.
 - [x] A live `2026-10-08T05:00:00Z` run reported both Moon events in time order: 00:12 Set and 12:06 Rise. The `2026-10-07` response omitted Set and the program reported that without failing.
 - [x] The default no-`--at` command and `--help` succeeded; invalid coordinates and a timestamp without a time zone produced nonzero exits.
+- [x] The short `./sky` launcher passed shell syntax checks, accepted a prompted location, and worked as `wsl ./sky "Chico, CA"` from PowerShell with live API output.

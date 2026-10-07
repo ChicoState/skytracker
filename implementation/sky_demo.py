@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Show approximate constellations and Moon rise/set for one Earth location."""
+# Show approximate constellations and Moon rise/set for one Earth location.
 
 import argparse
 from datetime import datetime, timezone
@@ -21,12 +21,13 @@ CATALOG_URL = (
 )
 
 
+# Use this error for failures that should be shown directly to the user.
 class DemoError(Exception):
-    """A short, user-facing failure message."""
+    pass
 
 
+# Request one API URL and return its JSON, with a readable error on failure.
 def fetch_json(url, source, accept="application/json"):
-    """Request one API URL and return its JSON, with a readable error on failure."""
     request = Request(
         url,
         headers={
@@ -45,8 +46,8 @@ def fetch_json(url, source, accept="application/json"):
     return data
 
 
+# Parse a decimal latitude,longitude pair and reject invalid ranges.
 def parse_coordinates(value):
-    """Parse a decimal latitude,longitude pair and reject invalid ranges."""
     try:
         parts = value.split(",")
         if len(parts) != 2:
@@ -61,8 +62,8 @@ def parse_coordinates(value):
     return latitude, longitude
 
 
+# Use entered coordinates directly or look up a place name with Open-Meteo.
 def resolve_location(value):
-    """Use entered coordinates directly or look up a place name with Open-Meteo."""
     parts = value.split(",")
     if len(parts) == 2:
         try:
@@ -90,8 +91,8 @@ def resolve_location(value):
     return lat, lon, label
 
 
+# Convert the requested time to UTC, or use the current UTC time.
 def parse_at(value):
-    """Convert the requested time to UTC, or use the current UTC time."""
     if value is None:
         instant = datetime.now(timezone.utc)
     else:
@@ -107,8 +108,8 @@ def parse_at(value):
     return instant
 
 
+# Read local mean sidereal time from the USNO response and return degrees.
 def parse_lmst(payload):
-    """Return local mean sidereal angle in degrees from the USNO response."""
     try:
         clock = payload["properties"]["data"][0]["lmst"]
         hours, minutes, seconds = clock.split(":")
@@ -120,8 +121,8 @@ def parse_lmst(payload):
     return 15 * (hours + minutes / 60 + seconds / 3600)
 
 
+# Calculate a sky point's geometric altitude above or below the horizon.
 def altitude_degrees(latitude, declination, right_ascension, sidereal_degrees):
-    """Geometric altitude from latitude, declination, and local hour angle."""
     lat = math.radians(latitude)
     dec = math.radians(declination)
     hour_angle = math.radians(sidereal_degrees - right_ascension)
@@ -129,8 +130,8 @@ def altitude_degrees(latitude, declination, right_ascension, sidereal_degrees):
     return math.degrees(math.asin(max(-1.0, min(1.0, sine))))
 
 
+# List catalog label points above the observer's horizon, highest first.
 def visible_constellations(payload, latitude, sidereal_degrees):
-    """List catalog label points above the observer's horizon, highest first."""
     features = payload.get("features")
     if not isinstance(features, list) or not features:
         raise DemoError("Constellation catalog is missing expected reference points")
@@ -152,8 +153,8 @@ def visible_constellations(payload, latitude, sidereal_degrees):
     return sorted(visible, key=lambda item: (-item[1], item[0]))
 
 
+# Keep every Moon rise and set in the USNO response in time order.
 def moon_rise_set(payload):
-    """Keep every Moon rise and set in the USNO response in time order."""
     try:
         entries = payload["properties"]["data"]["moondata"]
     except (KeyError, TypeError) as exc:
@@ -175,8 +176,8 @@ def moon_rise_set(payload):
     return sorted(events)
 
 
+# Read command-line input, fetch the API data, and print the sky report.
 def main():
-    """Read command-line input, fetch the API data, and print the sky report."""
     parser = argparse.ArgumentParser(
         description="Fetch approximate above-horizon constellations and Moon rise/set for a location. No API key needed."
     )

@@ -1,4 +1,4 @@
-"""Small, network-free checks for the standalone API demonstration."""
+# Small, network-free checks for the standalone API demonstration.
 
 import unittest
 

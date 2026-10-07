@@ -26,6 +26,7 @@ class DemoError(Exception):
 
 
 def fetch_json(url, source, accept="application/json"):
+    """Request one API URL and return its JSON, with a readable error on failure."""
     request = Request(
         url,
         headers={
@@ -61,6 +62,7 @@ def parse_coordinates(value):
 
 
 def resolve_location(value):
+    """Use entered coordinates directly or look up a place name with Open-Meteo."""
     parts = value.split(",")
     if len(parts) == 2:
         try:
@@ -89,6 +91,7 @@ def resolve_location(value):
 
 
 def parse_at(value):
+    """Convert the requested time to UTC, or use the current UTC time."""
     if value is None:
         instant = datetime.now(timezone.utc)
     else:
@@ -127,6 +130,7 @@ def altitude_degrees(latitude, declination, right_ascension, sidereal_degrees):
 
 
 def visible_constellations(payload, latitude, sidereal_degrees):
+    """List catalog label points above the observer's horizon, highest first."""
     features = payload.get("features")
     if not isinstance(features, list) or not features:
         raise DemoError("Constellation catalog is missing expected reference points")
@@ -149,6 +153,7 @@ def visible_constellations(payload, latitude, sidereal_degrees):
 
 
 def moon_rise_set(payload):
+    """Keep every Moon rise and set in the USNO response in time order."""
     try:
         entries = payload["properties"]["data"]["moondata"]
     except (KeyError, TypeError) as exc:
@@ -171,6 +176,7 @@ def moon_rise_set(payload):
 
 
 def main():
+    """Read command-line input, fetch the API data, and print the sky report."""
     parser = argparse.ArgumentParser(
         description="Fetch approximate above-horizon constellations and Moon rise/set for a location. No API key needed."
     )

@@ -1,0 +1,22 @@
+{% load static %}
+<aside class="constellation-filters" data-constellation-filters aria-label="Constellation filters">
+  <h2 class="constellation-filters__title">Filter constellations</h2>
+
+  <label class="constellation-filters__field">
+    <span>Search</span>
+    <input data-constellation-search type="search" placeholder="Search by name or IAU code" autocomplete="off">
+  </label>
+
+  <label class="constellation-filters__field">
+    <span>Constellation</span>
+    <select data-constellation-select>
+      <option value="">All matching constellations</option>
+    </select>
+  </label>
+
+  <p class="constellation-filters__meta" data-constellation-count aria-live="polite">0 constellations</p>
+  <button type="button" data-constellation-clear>Clear filters</button>
+</aside>
+
+<link rel="stylesheet" href="{% static 'skytracker/constellation-filters.css' %}">
+<script src="{% static 'skytracker/constellation-filters.js' %}"></script>

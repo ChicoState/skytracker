@@ -14,7 +14,14 @@ def home(request):
             context["error"] = "Keep the location under 120 characters."
         else:
             try:
-                context["report"] = get_sky_report(city)
+                report = get_sky_report(city)
+                context["report"] = report
+                # Keep this UI adapter separate from the data-collection layer,
+                # which returns (name, altitude) tuples for the server-rendered list.
+                context["filterable_constellations"] = [
+                    {"id": name, "name": name, "altitude": altitude}
+                    for name, altitude in report["visible"]
+                ]
             except DemoError as exc:
                 context["error"] = str(exc)
     return render(request, "sky.html", context)

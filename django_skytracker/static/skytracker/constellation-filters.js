@@ -64,7 +64,10 @@
     let constellations = [];
 
     function state() {
-      const matches = filterConstellations(constellations, searchInput.value);
+      const matchingQuery = filterConstellations(constellations, searchInput.value);
+      const matches = select.value
+        ? matchingQuery.filter((constellation) => constellation.id === select.value)
+        : matchingQuery;
       return {
         query: searchInput.value.trim(),
         selectedId: select.value || null,

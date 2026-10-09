@@ -30,6 +30,8 @@ class HomePageTests(SimpleTestCase):
         response = self.client.get("/", {"city": "Chico, CA"})
         self.assertContains(response, "Cygnus")
         self.assertContains(response, "Orion")
+        self.assertContains(response, 'data-constellation-filters')
+        self.assertContains(response, 'visible-constellations-data')
         self.assertContains(response, "01:30 Rise")
         get_sky_report.assert_called_once_with("Chico, CA")
 

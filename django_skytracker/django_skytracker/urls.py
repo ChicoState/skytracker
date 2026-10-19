@@ -17,6 +17,11 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path
 
+from . import views
+
 urlpatterns = [
+    path('', views.landing, name='home'),
+    path('calendar/', views.home, name='calendar'),
     path('admin/', admin.site.urls),
+    path('filters-preview/', views.filters_preview, name='filters-preview'),
 ]

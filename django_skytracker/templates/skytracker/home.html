@@ -1,0 +1,85 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SkyTracker</title>
+  <link rel="stylesheet" href="{% static 'skytracker/home.css' %}">
+</head>
+<body>
+  <header class="site-header">
+    <a class="wordmark" href="/" aria-current="page">SkyTracker</a>
+    <nav aria-label="Primary navigation">
+      <ul class="site-nav">
+        <li><a href="/" aria-current="page">Home</a></li>
+        <li><a href="/calendar/">Calendar</a></li>
+        <li><span title="News is coming soon">News</span></li>
+      </ul>
+    </nav>
+  </header>
+
+  <main>
+    <section class="banner" aria-labelledby="banner-heading">
+      <div>
+        <p class="eyebrow">SkyTracker</p>
+        <h1 id="banner-heading">Find what is happening in the sky.</h1>
+        <p>Explore upcoming celestial events and the constellations visible from your location.</p>
+        <a class="button-link" href="/calendar/">Explore the calendar</a>
+      </div>
+    </section>
+
+    <section class="welcome" aria-labelledby="welcome-heading">
+      <h2 id="welcome-heading">Welcome to SkyTracker</h2>
+      <p>SkyTracker is a simple place to discover future sky events and check the night sky from a city you choose.</p>
+    </section>
+
+    <section class="featured-events" aria-labelledby="featured-heading">
+      <div class="section-heading">
+        <h2 id="featured-heading">Featured events</h2>
+        <a href="/calendar/">View calendar</a>
+      </div>
+
+      <div class="featured-grid">
+        <article class="event-card event-card--featured">
+          <div class="event-card__media" aria-hidden="true"></div>
+          <div class="event-card__content">
+            <p class="event-card__label">Coming soon</p>
+            <h3>Sky event details</h3>
+            <p>Featured astronomical events will appear here when the event feed is connected.</p>
+            <a href="/calendar/">Browse the calendar</a>
+          </div>
+        </article>
+
+        <article class="event-card event-card--featured">
+          <div class="event-card__media" aria-hidden="true"></div>
+          <div class="event-card__content">
+            <p class="event-card__label">Coming soon</p>
+            <h3>Plan your next viewing</h3>
+            <p>Use the calendar to search by city and see constellations above the horizon.</p>
+            <a href="/calendar/">Choose a location</a>
+          </div>
+        </article>
+
+        <article class="event-card event-card--compact">
+          <div class="event-card__media" aria-hidden="true"></div>
+          <div class="event-card__content">
+            <p class="event-card__label">Coming soon</p>
+            <h3>More featured events</h3>
+            <p>Additional event previews will be listed here.</p>
+          </div>
+        </article>
+
+        <article class="event-card event-card--compact">
+          <div class="event-card__media" aria-hidden="true"></div>
+          <div class="event-card__content">
+            <p class="event-card__label">Coming soon</p>
+            <h3>Event updates</h3>
+            <p>New astronomy updates will be highlighted here.</p>
+          </div>
+        </article>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

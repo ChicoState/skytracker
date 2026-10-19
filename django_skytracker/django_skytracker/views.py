@@ -3,6 +3,10 @@ from django.shortcuts import render
 from implementation.sky_demo import DemoError, get_sky_report
 
 
+def landing(request):
+    return render(request, "skytracker/home.html")
+
+
 # Show the search form and fetch a sky report when a location is submitted.
 def home(request):
     city = request.GET.get("city", "").strip()

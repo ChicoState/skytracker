@@ -3,55 +3,53 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Sky Tracker demo</title>
+  <title>Sky Tracker</title>
   <style>
-    body { max-width: 42rem; margin: 2rem auto; padding: 0 1rem; font: 1rem/1.5 system-ui, sans-serif; }
-    form { display: flex; flex-wrap: wrap; gap: .5rem; margin: 1rem 0; }
-    label { width: 100%; }
-    input { flex: 1 1 14rem; padding: .4rem; font: inherit; }
-    button { padding: .4rem .8rem; font: inherit; }
-    .error { color: #a00000; }
-    li { margin: .15rem 0; }
-    small { color: #444; }
+    :root { color-scheme: dark; --ink:#eef4ff; --muted:#9aa9c2; --faint:#71809a; --canvas:#08111f; --surface:#101c2f; --raised:#14243b; --line:#253752; --accent:#69d4c2; --accent-strong:#9cf1df; --danger:#ff9b9b; }
+    * { box-sizing:border-box; }
+    body { margin:0; min-width:320px; background:var(--canvas); color:var(--ink); font:1rem/1.55 Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+    .shell { width:min(1180px,calc(100% - 2rem)); margin:0 auto; padding:3rem 0 4rem; }
+    .masthead { display:flex; justify-content:space-between; align-items:end; gap:2rem; margin-bottom:2rem; }
+    .eyebrow { margin:0 0 .5rem; color:var(--accent); font-size:.76rem; font-weight:800; letter-spacing:.14em; text-transform:uppercase; }
+    h1,h2,h3,p { margin-top:0; } h1 { margin-bottom:.65rem; font-size:clamp(2.1rem,5vw,4rem); letter-spacing:-.05em; line-height:1; } h2 { margin-bottom:.35rem; font-size:clamp(1.45rem,3vw,2rem); letter-spacing:-.025em; } h3 { margin-bottom:1rem; font-size:1rem; }
+    .lede { max-width:38rem; margin-bottom:0; color:var(--muted); font-size:1.05rem; }
+    .search-panel,.card { border:1px solid var(--line); background:var(--surface); } .search-panel { padding:1rem; border-radius:14px; }
+    form { display:flex; align-items:end; gap:.75rem; } label { display:block; flex:1; color:var(--muted); font-size:.83rem; font-weight:700; }
+    input { display:block; width:100%; margin-top:.4rem; padding:.78rem .9rem; border:1px solid #3b506e; border-radius:8px; background:#0b1728; color:var(--ink); font:inherit; } input:focus { border-color:var(--accent); outline:3px solid rgba(105,212,194,.2); }
+    button { padding:.78rem 1rem; border:0; border-radius:8px; background:var(--accent); color:#06141a; cursor:pointer; font:inherit; font-weight:800; white-space:nowrap; } button:hover { background:var(--accent-strong); }
+    .error { margin:1rem 0 0; padding:.8rem 1rem; border:1px solid #6b3c4b; border-radius:8px; background:#301c2a; color:var(--danger); }
+    .report { margin-top:2rem; } .report-head { display:flex; justify-content:space-between; align-items:end; gap:1rem; margin-bottom:1.25rem; } .report-meta,.note,.source-line { color:var(--muted); font-size:.88rem; } .report-meta { margin-bottom:0; }
+    .badge { display:inline-flex; padding:.35rem .6rem; border:1px solid #37685f; border-radius:999px; color:var(--accent-strong); font-size:.76rem; font-weight:800; white-space:nowrap; }
+    .overview { display:grid; grid-template-columns:repeat(3,1fr); gap:.75rem; margin-bottom:1rem; } .metric { padding:1rem; border:1px solid var(--line); border-radius:10px; background:var(--raised); } .metric-label { display:block; margin-bottom:.25rem; color:var(--muted); font-size:.78rem; font-weight:700; text-transform:uppercase; letter-spacing:.08em; } .metric-value { display:block; font-size:1.55rem; font-weight:800; }
+    .section-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:1rem; } .card { min-width:0; padding:1.25rem; border-radius:12px; } .card-wide { grid-column:1/-1; } .card-heading { display:flex; align-items:baseline; justify-content:space-between; gap:1rem; } .card-heading h3 { margin-bottom:.2rem; } .count { color:var(--faint); font-size:.8rem; }
+    ul { margin:0; padding:0; list-style:none; } .constellations { display:grid; grid-template-columns:repeat(auto-fill,minmax(10rem,1fr)); gap:.5rem; } .constellations li { padding:.55rem .65rem; border:1px solid var(--line); border-radius:7px; background:#0d192b; } .constellations strong { display:block; font-size:.9rem; } .constellations span { color:var(--accent); font-size:.8rem; }
+    .data-list { display:grid; gap:.6rem; } .data-list li { padding-bottom:.6rem; border-bottom:1px solid rgba(37,55,82,.75); } .data-list li:last-child { padding-bottom:0; border-bottom:0; } .item-title { font-weight:750; } .item-detail { display:block; color:var(--muted); font-size:.88rem; }
+    .table-wrap { overflow-x:auto; } table { width:100%; border-collapse:collapse; font-size:.9rem; } th,td { padding:.7rem .55rem; border-bottom:1px solid var(--line); text-align:left; white-space:nowrap; } th { color:var(--muted); font-size:.72rem; letter-spacing:.08em; text-transform:uppercase; } tr:last-child td { border-bottom:0; }
+    .probability { color:var(--accent-strong); font-size:2rem; font-weight:850; } .footer-notes { margin-top:1.25rem; } .source-line { margin-bottom:.35rem; }
+    @media (max-width:720px) { .shell { width:min(100% - 1.25rem,38rem); padding-top:1.5rem; } .masthead,.report-head,form { align-items:stretch; flex-direction:column; } .masthead { gap:1rem; } .overview,.section-grid { grid-template-columns:1fr; } .card-wide { grid-column:auto; } button { width:100%; } }
   </style>
 </head>
 <body>
-  <main>
-    <h1>Sky Tracker demo</h1>
-    <form method="get">
-      <label for="city">City or latitude,longitude</label>
-      <input id="city" name="city" type="text" value="{{ city }}" placeholder="Chico, CA" maxlength="120" required>
-      <button type="submit">Find constellations</button>
-    </form>
-
+  <main class="shell">
+    <header class="masthead">
+      <div><p class="eyebrow">Sky Tracker</p><h1>Read the sky.</h1><p class="lede">A clear, location-aware snapshot of what is above the horizon right now.</p></div>
+      <div class="search-panel"><form method="get"><label for="city">Search a city or coordinates<input id="city" name="city" type="text" value="{{ city }}" placeholder="Chico, CA or 39.7285,-121.8375" maxlength="120" required></label><button type="submit">Update sky</button></form></div>
+    </header>
     {% if error %}<p class="error" role="alert">{{ error }}</p>{% endif %}
-
     {% if report %}
-      <h2>{{ report.label }}</h2>
-      <p>Sky at {{ report.instant|date:"Y-m-d H:i:s" }} UTC · {{ report.latitude|floatformat:4 }}, {{ report.longitude|floatformat:4 }}</p>
-      <h3>Constellations above the horizon ({{ report.visible|length }} of {{ report.constellation_count }} reference points)</h3>
-      {% if report.visible %}
-        <ul>
-          {% for name, altitude in report.visible %}
-            <li>{{ name }} — {{ altitude|floatformat:1 }}° above the horizon</li>
-          {% endfor %}
-        </ul>
-      {% else %}
-        <p>No constellation reference points are above the horizon.</p>
-      {% endif %}
-
-      <h3>Moon rise and set</h3>
-      {% if report.moon_events %}
-        <ul>
-          {% for clock, event in report.moon_events %}
-            <li>{{ clock }} {{ event }} (UT1, approximately UTC)</li>
-          {% endfor %}
-        </ul>
-      {% else %}
-        <p>No Moon rise or set on this UTC date.</p>
-      {% endif %}
-      <p><small>Constellation positions use approximate reference points. Daylight, weather, obstructions, and constellation edges are not checked.</small></p>
-      <p><small>Data: Open-Meteo geocoding, USNO sidereal time and Moon events, d3-celestial constellation catalog via GitHub.</small></p>
+      <section class="report" aria-labelledby="report-title">
+        <div class="report-head"><div><p class="eyebrow">Your observation</p><h2 id="report-title">{{ report.label }}</h2><p class="report-meta">{{ report.instant|date:"D, M j, Y · H:i:s" }} UTC · {{ report.latitude|floatformat:4 }}, {{ report.longitude|floatformat:4 }}</p></div><span class="badge">Live sky data</span></div>
+        <div class="overview"><div class="metric"><span class="metric-label">Above horizon</span><span class="metric-value">{{ report.visible|length }} constellations</span></div><div class="metric"><span class="metric-label">Planets &amp; Moon</span><span class="metric-value">{{ report.planets|length }} visible</span></div><div class="metric"><span class="metric-label">Aurora forecast</span><span class="metric-value">{{ report.aurora.probability }}%</span></div></div>
+        <div class="section-grid">
+          <section class="card card-wide" aria-labelledby="constellations-title"><div class="card-heading"><h3 id="constellations-title">Constellations above the horizon</h3><span class="count">{{ report.visible|length }} of {{ report.constellation_count }} reference points</span></div>{% if report.visible %}<ul class="constellations">{% for name, altitude in report.visible %}<li><strong>{{ name }}</strong><span>{{ altitude|floatformat:1 }}° altitude</span></li>{% endfor %}</ul>{% else %}<p class="note">No constellation reference points are above the horizon.</p>{% endif %}</section>
+          <section class="card card-wide" aria-labelledby="planets-title"><div class="card-heading"><h3 id="planets-title">Visible planets and Moon</h3><span class="count">Sorted by altitude</span></div>{% if report.planets %}<div class="table-wrap"><table><thead><tr><th scope="col">Body</th><th scope="col">Altitude</th><th scope="col">Azimuth</th><th scope="col">Magnitude</th></tr></thead><tbody>{% for planet in report.planets %}<tr><td>{{ planet.name }}</td><td>{{ planet.altitude|floatformat:1 }}°</td><td>{{ planet.azimuth|floatformat:1 }}°</td><td>{{ planet.magnitude|floatformat:1 }}</td></tr>{% endfor %}</tbody></table></div>{% else %}<p class="note">No planets or Moon are above the horizon at this time.</p>{% endif %}</section>
+          <section class="card" aria-labelledby="moon-title"><h3 id="moon-title">Moon rise and set</h3>{% if report.moon_events %}<ul class="data-list">{% for clock, event in report.moon_events %}<li><span class="item-title">{{ clock }} · {{ event }}</span><span class="item-detail">UT1, approximately UTC</span></li>{% endfor %}</ul>{% else %}<p class="note">No Moon rise or set on this UTC date.</p>{% endif %}</section>
+          <section class="card" aria-labelledby="aurora-title"><h3 id="aurora-title">Aurora forecast</h3><p class="probability">{{ report.aurora.probability }}%</p><p class="item-detail">NOAA forecast intensity near {{ report.aurora.latitude|floatformat:1 }}°, {{ report.aurora.longitude|floatformat:1 }}°.</p><p class="note">A short-term forecast-grid value, not a guarantee of local visibility.</p></section>
+          <section class="card" aria-labelledby="eclipses-title"><h3 id="eclipses-title">Upcoming eclipses</h3>{% if report.eclipses %}<ul class="data-list">{% for eclipse in report.eclipses|slice:":6" %}<li><span class="item-title">{{ eclipse.date }} · {{ eclipse.type|capfirst }} {{ eclipse.category }}</span><span class="item-detail">{{ eclipse.time_utc }} UTC</span></li>{% endfor %}</ul>{% else %}<p class="note">No upcoming eclipses were returned by NASA.</p>{% endif %}</section>
+          <section class="card" aria-labelledby="showers-title"><h3 id="showers-title">Established meteor showers</h3>{% if report.meteor_showers %}<ul class="data-list">{% for shower in report.meteor_showers|slice:":6" %}<li><span class="item-title">{{ shower.code }} · {{ shower.name }}</span><span class="item-detail">Radiant RA {{ shower.radiant_ra }}°, Dec {{ shower.radiant_dec }}°</span></li>{% endfor %}</ul>{% else %}<p class="note">No established annual meteor showers were returned by the IAU MDC.</p>{% endif %}</section>
+        </div>
+        <footer class="footer-notes"><p class="source-line">Constellation positions are approximate reference points. Daylight, weather, obstructions, and constellation edges are not checked.</p><p class="source-line">Data: Open-Meteo, USNO, d3-celestial, Visible Planets API, NASA eclipse catalogs, IAU Meteor Data Center, and NOAA SWPC.</p></footer>
+      </section>
     {% endif %}
   </main>
 </body>

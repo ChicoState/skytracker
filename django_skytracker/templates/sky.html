@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Sky Tracker demo</title>
   <style>
-    body { max-width: 42rem; margin: 2rem auto; padding: 0 1rem; font: 1rem/1.5 system-ui, sans-serif; }
+    body { max-width: 70rem; margin: 2rem auto; padding: 0 1rem; font: 1rem/1.5 system-ui, sans-serif; }
     form { display: flex; flex-wrap: wrap; gap: .5rem; margin: 1rem 0; }
     label { width: 100%; }
     input { flex: 1 1 14rem; padding: .4rem; font: inherit; }
@@ -13,11 +13,38 @@
     .error { color: #a00000; }
     li { margin: .15rem 0; }
     small { color: #444; }
+    .constellation-results { display: grid; grid-template-columns: minmax(15rem, 20rem) 1fr; gap: 1.5rem; align-items: start; }
+    @media (max-width: 44rem) { .constellation-results { grid-template-columns: 1fr; } }
   </style>
 </head>
 <body>
+  <nav aria-label="Account navigation">
+    {% if user.is_authenticated %}
+      <a href="{% url 'accounts:profile' %}">Profile</a>
+      <a href="{% url 'accounts:saved_events' %}">Saved events</a>
+      <form method="post" action="{% url 'accounts:logout' %}" style="display:inline">
+        {% csrf_token %}
+        <button type="submit">Log out</button>
+      </form>
+    {% else %}
+      <a href="{% url 'accounts:login' %}">Log in</a>
+      <a href="{% url 'accounts:signup' %}">Create account</a>
+    {% endif %}
+  </nav>
   <main>
     <h1>Sky Tracker demo</h1>
+    {% if user.is_authenticated and locations %}
+      <form method="get">
+        <label for="location_id">Use a saved location</label>
+        <select id="location_id" name="location_id">
+          <option value="">Choose a location</option>
+          {% for location in locations %}
+            <option value="{{ location.pk }}" {% if selected_location_id == location.pk|stringformat:"s" %}selected{% endif %}>{{ location.label }}</option>
+          {% endfor %}
+        </select>
+        <button type="submit">Show local events</button>
+      </form>
+    {% endif %}
     <form method="get">
       <label for="city">City or latitude,longitude</label>
       <input id="city" name="city" type="text" value="{{ city }}" placeholder="Chico, CA" maxlength="120" required>
@@ -31,11 +58,53 @@
       <p>Sky at {{ report.instant|date:"Y-m-d H:i:s" }} UTC · {{ report.latitude|floatformat:4 }}, {{ report.longitude|floatformat:4 }}</p>
       <h3>Constellations above the horizon ({{ report.visible|length }} of {{ report.constellation_count }} reference points)</h3>
       {% if report.visible %}
-        <ul>
-          {% for name, altitude in report.visible %}
-            <li>{{ name }} — {{ altitude|floatformat:1 }}° above the horizon</li>
-          {% endfor %}
-        </ul>
+        <div class="constellation-results">
+          {% include "skytracker/includes/constellation_filters.html" %}
+          <div>
+            <ul data-visible-constellation-list aria-live="polite">
+              {% for name, altitude in report.visible %}
+                <li>{{ name }} — {{ altitude|floatformat:1 }}° above the horizon</li>
+              {% endfor %}
+            </ul>
+            <p data-visible-constellation-empty hidden>No visible constellations match these filters.</p>
+          </div>
+        </div>
+        {{ filterable_constellations|json_script:"visible-constellations-data" }}
+        <script>
+          (() => {
+            const filterRoot = document.querySelector("[data-constellation-filters]");
+            const list = document.querySelector("[data-visible-constellation-list]");
+            const emptyMessage = document.querySelector("[data-visible-constellation-empty]");
+            const dataNode = document.getElementById("visible-constellations-data");
+
+            if (!filterRoot || !list || !emptyMessage || !dataNode || !window.SkyTrackerConstellationFilters) {
+              return;
+            }
+
+            const visibleConstellations = JSON.parse(dataNode.textContent);
+            const constellationsById = new Map(
+              visibleConstellations.map((constellation) => [constellation.id, constellation]),
+            );
+
+            function renderVisibleConstellations({ matches }) {
+              list.replaceChildren();
+              matches.forEach(({ id }) => {
+                const constellation = constellationsById.get(id);
+                if (!constellation) return;
+
+                const item = document.createElement("li");
+                item.textContent = `${constellation.name} — ${Number(constellation.altitude).toFixed(1)}° above the horizon`;
+                list.append(item);
+              });
+              emptyMessage.hidden = matches.length > 0;
+            }
+
+            const filters = window.SkyTrackerConstellationFilters.create(filterRoot, {
+              onChange: renderVisibleConstellations,
+            });
+            filters.setConstellations(visibleConstellations);
+          })();
+        </script>
       {% else %}
         <p>No constellation reference points are above the horizon.</p>
       {% endif %}
@@ -52,6 +121,46 @@
       {% endif %}
       <p><small>Constellation positions use approximate reference points. Daylight, weather, obstructions, and constellation edges are not checked.</small></p>
       <p><small>Data: Open-Meteo geocoding, USNO sidereal time and Moon events, d3-celestial constellation catalog via GitHub.</small></p>
+
+      <section aria-labelledby="events-heading">
+        <h2 id="events-heading">Local astronomy events</h2>
+        <p>Showing {{ event_start }} through {{ event_end }} in the location's timezone.</p>
+        {% if user.is_authenticated %}<p><small>Includes Sun/Moon timing, planet rise/set times, and meteor-shower viewing windows when available.</small></p>{% endif %}
+        {% if event_errors %}
+          <p class="error" role="status">Some event data could not be loaded. Results below may be partial.</p>
+        {% endif %}
+        {% if events %}
+          <ul>
+            {% for item in events %}
+              <li>
+                <strong>{{ item.event.title }}</strong> — {{ item.local_start|date:"D, M j, Y g:i A T" }}
+                <small>{{ item.event.visibility_status }} · Source: {{ item.event.source }}</small>
+                {% if user.is_authenticated %}
+                  {% if item.is_saved %}
+                    <span aria-label="Saved">Saved</span>
+                  {% else %}
+                    <form method="post" action="{% url 'accounts:saved_events' %}" style="display:inline">
+                      {% csrf_token %}
+                      <input type="hidden" name="event_id" value="{{ item.event.external_id }}">
+                      <input type="hidden" name="label" value="{{ item.event.title }}">
+                      <input type="hidden" name="title" value="{{ item.event.title }}">
+                      <input type="hidden" name="start_time_utc" value="{{ item.event.start_time_utc|date:'c' }}">
+                      {% if item.event.end_time_utc %}<input type="hidden" name="end_time_utc" value="{{ item.event.end_time_utc|date:'c' }}">{% endif %}
+                      <input type="hidden" name="timezone" value="{{ event_location.timezone }}">
+                      <input type="hidden" name="location_label" value="{{ event_location.label }}">
+                      <button type="submit">Save event</button>
+                    </form>
+                  {% endif %}
+                {% else %}
+                  <a href="{% url 'accounts:login' %}?next={{ request.get_full_path|urlencode }}">Log in to save</a>
+                {% endif %}
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p role="status">No local sky events were returned for this range.</p>
+        {% endif %}
+      </section>
     {% endif %}
   </main>
 </body>

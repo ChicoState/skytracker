@@ -2,7 +2,7 @@
 
 import unittest
 
-from sky_demo import (
+from implementation.sky_demo import (
     DemoError,
     altitude_degrees,
     moon_rise_set,

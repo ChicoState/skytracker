@@ -1,0 +1,1 @@
+"""Shared astronomy event services."""

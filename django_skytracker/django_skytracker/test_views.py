@@ -3,6 +3,7 @@ from unittest.mock import patch
 
 from django.test import SimpleTestCase
 
+from implementation.astronomy.models import AstronomyEvent, EventType, VisibilityStatus
 from implementation.sky_demo import DemoError
 
 
@@ -16,8 +17,9 @@ class HomePageTests(SimpleTestCase):
         get_sky_report.assert_not_called()
 
     # A search should display the constellation names returned by the API layer.
+    @patch("django_skytracker.views.get_events_for_location", return_value=([], []))
     @patch("django_skytracker.views.get_sky_report")
-    def test_search_shows_constellations(self, get_sky_report):
+    def test_search_shows_constellations(self, get_sky_report, get_events):
         get_sky_report.return_value = {
             "label": "Chico, California, United States",
             "latitude": 39.73,
@@ -30,6 +32,8 @@ class HomePageTests(SimpleTestCase):
         response = self.client.get("/", {"city": "Chico, CA"})
         self.assertContains(response, "Cygnus")
         self.assertContains(response, "Orion")
+        self.assertContains(response, 'data-constellation-filters')
+        self.assertContains(response, 'visible-constellations-data')
         self.assertContains(response, "01:30 Rise")
         get_sky_report.assert_called_once_with("Chico, CA")
 
@@ -41,8 +45,38 @@ class HomePageTests(SimpleTestCase):
         get_sky_report.assert_not_called()
 
     # An upstream failure should become a readable page message.
+    @patch("django_skytracker.views.get_events_for_location", return_value=([], []))
     @patch("django_skytracker.views.get_sky_report", side_effect=DemoError("Location not found"))
-    def test_api_error_is_displayed(self, get_sky_report):
+    def test_api_error_is_displayed(self, get_sky_report, get_events):
         response = self.client.get("/", {"city": "Unknownville"})
         self.assertContains(response, "Location not found")
         get_sky_report.assert_called_once_with("Unknownville")
+
+    @patch("django_skytracker.views.get_events_for_location")
+    @patch("django_skytracker.views.get_sky_report")
+    def test_search_displays_local_events(self, get_sky_report, get_events):
+        get_sky_report.return_value = {
+            "label": "Chico, California, United States",
+            "latitude": 39.73,
+            "longitude": -121.84,
+            "instant": datetime(2026, 10, 7, tzinfo=timezone.utc),
+            "visible": [],
+            "constellation_count": 89,
+            "moon_events": [],
+        }
+        get_events.return_value = ([
+            AstronomyEvent(
+                external_id="moonrise:2026-10-19:39.73:-121.84:moonrise",
+                event_type=EventType.MOONRISE,
+                title="Moonrise",
+                start_time_utc=datetime(2026, 10, 19, 3, 10, tzinfo=timezone.utc),
+                visibility_status=VisibilityStatus.VISIBLE,
+                source="usno",
+            )
+        ], [])
+
+        response = self.client.get("/", {"city": "Chico, CA"})
+
+        self.assertContains(response, "Local astronomy events")
+        self.assertContains(response, "Moonrise")
+        self.assertContains(response, "Log in to save")

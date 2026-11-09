@@ -1,0 +1,23 @@
+{% extends "accounts/base.html" %}
+
+{% block title %}Locations | SkyTracker{% endblock %}
+
+{% block content %}
+  <h1>Your locations</h1>
+  <p><a href="{% url 'accounts:location_create' %}">Add a location</a></p>
+  {% if locations %}
+    <ul>
+      {% for location in locations %}
+        <li>
+          <strong>{{ location.label }}</strong> — {{ location.latitude }}, {{ location.longitude }} ({{ location.timezone }})
+          <a href="{% url 'accounts:location_edit' location.pk %}">Edit</a>
+          <form method="post" action="{% url 'accounts:location_delete' location.pk %}" style="display:inline">
+            {% csrf_token %}<button type="submit">Delete</button>
+          </form>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p>No saved locations yet. Add one to get local event times.</p>
+  {% endif %}
+{% endblock %}

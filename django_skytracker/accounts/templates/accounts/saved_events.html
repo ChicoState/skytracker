@@ -1,0 +1,30 @@
+{% extends "accounts/base.html" %}
+
+{% block title %}Saved events | SkyTracker{% endblock %}
+
+{% block content %}
+  <h1>Your saved events</h1>
+  <form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit">Save event</button>
+  </form>
+
+  {% if saved_events %}
+    <ul>
+      {% for event in saved_events %}
+        <li>
+          {{ event.title|default:event.label|default:event.event_id }}
+          {% if event.start_time_utc %}<time datetime="{{ event.start_time_utc|date:'c' }}">{{ event.start_time_utc|date:"D, M j, Y g:i A" }} {{ event.timezone }}</time>{% endif %}
+          <small>({{ event.event_id }})</small>
+          <form method="post" action="{% url 'accounts:delete_saved_event' event.pk %}" style="display:inline">
+            {% csrf_token %}
+            <button type="submit">Delete</button>
+          </form>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p>You have no saved events yet.</p>
+  {% endif %}
+{% endblock %}

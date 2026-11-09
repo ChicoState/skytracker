@@ -4,6 +4,7 @@
 
 {% block content %}
   <h1>Your profile</h1>
+  <p><a href="{% url 'accounts:locations' %}">Manage locations</a> · <a href="{% url 'accounts:saved_events' %}">Manage saved events</a></p>
   <form method="post">
     {% csrf_token %}
     {{ form.as_p }}

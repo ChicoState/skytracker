@@ -93,7 +93,7 @@ logged-in user must not be able to view or modify another user's data.
 - Keep CSRF protection enabled.
 - Use secure, HttpOnly, SameSite session cookies.
 - Rate-limit signup, login, and password-reset endpoints.
-- Verify password-reset tokens expire.
+- Verify the direct password-reset flow validates the account email and new password.
 - Test signup, login, logout, password reset, and user-data isolation.
 - Confirm PostgreSQL backups and recovery are enabled.
 

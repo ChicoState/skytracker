@@ -1,0 +1,558 @@
+SKYTRACKER SKY-EVENTS IMPLEMENTATION HANDOFF
+============================================
+
+Purpose
+-------
+This document is an implementation handoff for the next AI agent. It describes
+the current repository, the intended next feature, recommended data sources,
+the implementation order, and the verification requirements.
+
+The next feature is to use a user's saved location to show local and regional
+astronomy events such as eclipses, moon phases, seasons, planet visibility,
+aurora conditions, and close approaches.
+
+
+CURRENT REPOSITORY STATE
+------------------------
+
+Stack:
+- Django 5.x in a Python 3.12 Docker image.
+- PostgreSQL through Docker Compose.
+- Server-rendered Django templates.
+- Django session authentication with a custom accounts.User model.
+- Current account fields include email, ZIP code, birth date, timezone, and
+  email notification preference.
+- Current user-owned data includes accounts.SavedEvent.
+
+Current homepage:
+- GET / is the constellation search page.
+- A city or latitude,longitude query is resolved through Open-Meteo.
+- Constellation reference points are loaded from the pinned d3-celestial
+  catalog through GitHub.
+- USNO is used for sidereal time and Moon rise/set information.
+- The relevant API and calculation code currently lives in
+  implementation/sky_demo.py.
+
+Important current files:
+- django_skytracker/django_skytracker/views.py
+- django_skytracker/django_skytracker/urls.py
+- django_skytracker/templates/sky.html
+- implementation/sky_demo.py
+- django_skytracker/accounts/models.py
+- django_skytracker/accounts/views.py
+- django_skytracker/accounts/templates/accounts/base.html
+- compose.yaml
+- Dockerfile
+
+Current verification:
+- Run the Django suite:
+    docker compose exec server python manage.py test
+- Run standalone astronomy tests:
+    docker compose exec server python -m unittest discover -s implementation -p 'test_*.py'
+- Run JavaScript filter tests:
+    node django_skytracker/tests/test_constellation_filters.js
+- Run the application:
+    docker compose up --build
+
+Do not remove or replace the accounts application when adding astronomy
+features. The account branch and the constellation branch previously diverged;
+the constellation implementation was ported selectively so both systems remain.
+
+
+PRODUCT GOAL
+------------
+
+After a user selects or saves a location, SkyTracker should show:
+
+1. Upcoming astronomical events for that location.
+2. Whether each event is globally occurring, locally visible, or not visible.
+3. Local start, peak, and end times using the user's timezone.
+4. Useful observing context such as altitude, direction, daylight, and cloud
+   cover where available.
+5. The data source and limitations for each result.
+
+The system must distinguish between:
+- An event that happens somewhere on Earth.
+- An event that is visible from the user's coordinates.
+- An event that is likely observable in current weather.
+
+Do not describe an event as observable merely because it occurs on that date.
+
+
+RECOMMENDED DATA SOURCES
+------------------------
+
+1. Open-Meteo
+   Existing use: geocoding.
+   Add later: hourly cloud cover, precipitation probability, visibility, and
+   related observing conditions.
+   Documentation:
+   https://open-meteo.com/en/docs
+
+2. U.S. Naval Observatory (USNO)
+   Use for Sun/Moon rise, set, transit, twilight, Moon phases, seasons, and
+   eclipse data where the endpoint is suitable.
+   Documentation:
+   https://aa.usno.navy.mil/data/api.html
+   Existing endpoint:
+   https://aa.usno.navy.mil/api/rstt/oneday
+
+3. Astronomy Engine
+   Recommended calculation library for observer-specific calculations:
+   eclipses, transits, phases, rise/set, twilight, conjunctions, planetary
+   positions, and horizontal coordinates.
+   It is a better foundation for local visibility than adding a separate API
+   call for every event type.
+   Project and documentation:
+   https://github.com/cosinekitty/astronomy
+   Python documentation:
+   https://github.com/cosinekitty/astronomy/tree/master/source/python
+
+4. IMCCE OPALE
+   Use for eclipse general circumstances, local circumstances, and optional
+   eclipse visibility maps. Treat it as a specialized eclipse provider.
+   Documentation:
+   https://opale.imcce.fr/webservices/api.html
+   Example service family:
+   /api/v1/phenomena/eclipses/
+
+5. NASA/JPL Close Approach Data API
+   Use for upcoming asteroid and comet close approaches.
+   It provides event dates, distances, velocities, uncertainty fields, and
+   optional diameter information.
+   It does not determine whether the object is visible from a user location.
+   Documentation:
+   https://ssd-api.jpl.nasa.gov/doc/cad.html
+
+6. NASA/JPL Horizons
+   Use later for detailed observer ephemerides and local positions of selected
+   objects. It is more appropriate than the close-approach API when local
+   altitude, azimuth, or apparent magnitude is required.
+   Documentation:
+   https://ssd-api.jpl.nasa.gov/doc/horizons.html
+
+7. NOAA Space Weather Prediction Center
+   Use for current and near-term aurora forecasts. The machine-readable JSON
+   directory includes the OVATION aurora forecast.
+   JSON directory:
+   https://services.swpc.noaa.gov/json/
+   Product page:
+   https://www.swpc.noaa.gov/products/aurora-30-minute-forecast
+
+Avoid adding a commercial astronomy API until the free/public sources are
+insufficient. Avoid using a general news or calendar API as the authority for
+astronomical event times.
+
+
+ARCHITECTURE TO BUILD
+----------------------
+
+The current sky_demo.py mixes provider requests, parsing, calculations, and
+CLI output. Refactor it into small provider and service modules before adding
+many event types.
+
+Suggested structure:
+
+implementation/
+  astronomy/
+    __init__.py
+    models.py
+    event_service.py
+    visibility.py
+    providers/
+      __init__.py
+      open_meteo.py
+      usno.py
+      astronomy_engine.py
+      imcce.py
+      jpl.py
+      noaa_swpc.py
+  sky_demo.py
+
+Suggested responsibilities:
+- providers/*.py: HTTP calls and provider response validation.
+- visibility.py: altitude, azimuth, horizon, daylight, and local visibility.
+- event_service.py: combine providers and return normalized events.
+- models.py: typed internal event and location representations.
+- sky_demo.py: preserve the existing command-line demonstration by calling the
+  shared service rather than duplicating logic.
+- Django views: call the service and adapt its output for templates. Views
+  should not build provider URLs or parse provider-specific JSON.
+
+
+DATA MODEL
+----------
+
+Add a persistent location model rather than resolving the ZIP/city on every
+request.
+
+Suggested Location fields:
+- owner: ForeignKey to settings.AUTH_USER_MODEL
+- label: user-facing location name
+- latitude: DecimalField
+- longitude: DecimalField
+- elevation_meters: nullable DecimalField
+- timezone: IANA timezone string
+- source: provider name, such as open_meteo
+- created_at
+- updated_at
+
+The existing User.zip_code and User.timezone fields should remain compatible.
+The first migration can backfill no coordinates; resolve and save a location
+when the user next visits the location settings page.
+
+Suggested normalized AstronomyEvent fields:
+- external_id
+- event_type
+- title
+- description
+- start_time_utc
+- peak_time_utc, nullable
+- end_time_utc, nullable
+- location_required: boolean
+- visibility_status
+- latitude, nullable
+- longitude, nullable
+- altitude_degrees, nullable
+- azimuth_degrees, nullable
+- source
+- source_version, nullable
+- raw_data, nullable JSON
+- created_at
+- updated_at
+
+Suggested event types:
+- SUNRISE
+- SUNSET
+- TWILIGHT
+- MOONRISE
+- MOONSET
+- MOON_PHASE
+- EQUINOX
+- SOLSTICE
+- PERIHELION
+- APHELION
+- SOLAR_ECLIPSE
+- LUNAR_ECLIPSE
+- PLANET_RISE
+- PLANET_SET
+- CONJUNCTION
+- METEOR_SHOWER
+- AURORA
+- CLOSE_APPROACH
+
+Use explicit enum-like values. Do not store arbitrary user-supplied keys in a
+generic key/value table for astronomy events.
+
+
+IMPLEMENTATION ORDER
+--------------------
+
+Phase 1 - Location foundation
+
+Task 1: Add a user-owned Location model.
+Acceptance criteria:
+- A location stores validated latitude, longitude, timezone, and label.
+- A location belongs to exactly one account.
+- Users cannot read or modify another user's locations.
+- Migration and model tests pass.
+Verification:
+- Django model tests.
+- Account-isolation test.
+Dependencies: none.
+
+Task 2: Add location management UI.
+Acceptance criteria:
+- A logged-in user can add, edit, select, and delete their own location.
+- Existing ZIP code and timezone fields remain usable.
+- Invalid coordinates and invalid IANA timezones are rejected.
+Verification:
+- Django test-client form tests.
+- Manual profile/location check.
+Dependencies: Task 1.
+
+Checkpoint A:
+- All account tests pass.
+- Location ownership tests pass.
+- The current constellation homepage still works.
+
+
+Phase 2 - Event contract and first events
+
+Task 3: Define normalized event types and provider interfaces.
+Acceptance criteria:
+- Provider-specific payloads are converted into one normalized event shape.
+- Every event has a source and UTC timestamp.
+- Provider failures have a consistent internal error type.
+Verification:
+- Unit tests using fixed JSON fixtures.
+Dependencies: Task 1.
+
+Task 4: Extract the existing USNO functionality.
+Acceptance criteria:
+- Sunrise, sunset, twilight, Moonrise, and Moonset are returned through the
+  normalized event service.
+- Existing constellation behavior remains unchanged.
+- No provider URL construction remains in the Django view.
+Verification:
+- Existing tests plus new USNO fixture tests.
+- Live smoke test for a known location.
+Dependencies: Task 3.
+
+Task 5: Add Moon phases and seasons.
+Acceptance criteria:
+- New, first quarter, full, and third quarter events are displayed.
+- Equinoxes, solstices, perihelion, and aphelion are displayed.
+- Times are converted from UTC to the saved IANA timezone in the UI.
+Verification:
+- Fixture tests against USNO response shapes.
+- Compare one year of results against the USNO reference output.
+Dependencies: Task 4.
+
+Checkpoint B:
+- The homepage can display a date-range event list.
+- Event times are correct in both UTC and a non-UTC timezone.
+- A failed provider does not produce a server error page.
+
+
+Phase 3 - Eclipses and local visibility
+
+Task 6: Add eclipse provider integration.
+Recommended first implementation: use Astronomy Engine for calculations and
+IMCCE OPALE for eclipse-specific local circumstances or cross-checking.
+Acceptance criteria:
+- Solar and lunar eclipses appear in a date-range search.
+- Each eclipse has type, start, peak, end, and visibility status.
+- A location outside the visibility path is marked as not locally visible.
+- Provider responses are schema-validated.
+Verification:
+- Fixed fixtures for known solar and lunar eclipses.
+- Compare results for at least one known eclipse against IMCCE or USNO.
+Dependencies: Tasks 3-5.
+
+Task 7: Add observer calculations.
+Acceptance criteria:
+- Events include altitude/azimuth when meaningful.
+- Daylight and horizon state are represented separately from event occurrence.
+- Polar locations and no-rise/no-set cases do not crash.
+Verification:
+- Unit tests for equatorial, mid-latitude, and polar locations.
+Dependencies: Task 6.
+
+
+Phase 4 - Planets, objects, and regional conditions
+
+Task 8: Add Astronomy Engine planet events.
+Acceptance criteria:
+- Users can request rise/set or conjunction events for selected planets.
+- Results include local time and visibility data.
+- Calculation code is covered by deterministic tests.
+Dependencies: Task 7.
+
+Task 9: Add JPL close approaches.
+Acceptance criteria:
+- Upcoming asteroid/comet close approaches can be listed.
+- JPL signature/version is checked before parsing.
+- The UI clearly labels close approach as an orbital event, not a local
+  visibility guarantee.
+Verification:
+- Fixed JPL response fixture and empty-result fixture.
+Dependencies: Task 8.
+
+Task 10: Add NOAA aurora and Open-Meteo observing conditions.
+Acceptance criteria:
+- Aurora data is shown only as a forecast/possibility.
+- Cloud cover and precipitation are shown with timestamp and source.
+- NOAA/Open-Meteo failures degrade gracefully.
+Verification:
+- Fixed JSON fixtures.
+- Live smoke test with external requests disabled in normal tests.
+Dependencies: Task 7.
+
+
+Phase 5 - Persistence, caching, and user experience
+
+Task 11: Add event caching.
+Acceptance criteria:
+- Identical requests do not repeatedly hit external providers.
+- Cache duration differs by event type:
+  - long-lived: eclipses, seasons, close approaches
+  - short-lived: aurora and weather
+- Cache keys include location, time range, provider, and event type.
+Dependencies: Tasks 4-10.
+
+Task 12: Add saved events.
+Acceptance criteria:
+- A logged-in user can save an event for one of their locations.
+- Saved events are isolated by owner.
+- Existing SavedEvent behavior is migrated or extended without breaking users.
+Dependencies: Task 1 and whichever event model is selected.
+
+Task 13: Add event filtering and accessibility.
+Acceptance criteria:
+- Filter by event type and date range.
+- Empty, error, loading, and no-local-visibility states are explicit.
+- Forms and controls are keyboard accessible.
+Dependencies: Tasks 5-12.
+
+
+API AND INTERFACE CONTRACT
+--------------------------
+
+Preferred internal service shape:
+
+    get_events_for_location(
+        location,
+        start_date,
+        end_date,
+        event_types=None,
+    ) -> list[AstronomyEvent]
+
+Use a consistent provider error:
+
+    ProviderError(
+        provider="usno",
+        code="INVALID_RESPONSE",
+        message="The provider returned an unexpected response",
+    )
+
+If a JSON API is later exposed to another frontend, use:
+
+GET /api/events?location_id=<id>&start=<date>&end=<date>&type=<type>
+
+Response:
+
+    {
+      "data": [
+        {
+          "id": "...",
+          "eventType": "SOLAR_ECLIPSE",
+          "title": "...",
+          "startTimeUtc": "...",
+          "peakTimeUtc": "...",
+          "endTimeUtc": "...",
+          "visibilityStatus": "VISIBLE",
+          "source": "imcce",
+          "sourceVersion": "..."
+        }
+      ],
+      "errors": []
+    }
+
+Use HTTP 401 for unauthenticated requests, 403 for unauthorized locations,
+422 for invalid date/location filters, and 503 only when an external provider
+failure prevents a requested result.
+
+
+SECURITY AND RELIABILITY REQUIREMENTS
+--------------------------------------
+
+- Validate all location, date, event-type, and provider inputs server-side.
+- Use HTTPS for external providers in production.
+- Set timeouts on every external request.
+- Do not expose provider stack traces or raw secrets.
+- Do not let users supply arbitrary provider URLs.
+- Do not trust provider response shapes; validate them before use.
+- Check provider version/signature fields where documented.
+- Add rate limiting before exposing repeated user-triggered event queries.
+- Cache public astronomy data to reduce provider load.
+- Store source and retrieval time for user-visible results.
+- Keep API keys out of the repository. Most first-phase sources do not require
+  keys, but a future provider might.
+
+
+TESTING REQUIREMENTS
+---------------------
+
+Unit tests:
+- Coordinate and timezone validation.
+- Event normalization.
+- UTC-to-local conversion.
+- Sunrise/sunset and rise/set edge cases.
+- Eclipse visibility classification.
+- Polar and no-event cases.
+- Duplicate event suppression.
+
+Provider contract tests:
+- Store representative response fixtures in tests/fixtures/.
+- Test successful, empty, malformed, and provider-error responses.
+- Do not make live network calls in the normal test suite.
+
+Integration tests:
+- User location ownership.
+- Date-range event page.
+- Account A cannot access Account B's events.
+- Provider failure produces a readable partial-result message.
+
+Live smoke tests:
+- Chico, CA.
+- Seattle, WA.
+- An equatorial location.
+- A high-latitude location.
+- A known eclipse date.
+- At least one query with no local rise/set event.
+
+Existing commands:
+
+    docker compose up --build
+    docker compose exec server python manage.py test
+    docker compose exec server python -m unittest discover -s implementation -p 'test_*.py'
+    node django_skytracker/tests/test_constellation_filters.js
+
+
+OPEN DECISIONS FOR THE NEXT AGENT
+---------------------------------
+
+1. Should the first event page show a fixed 30-day window, a user-selected
+   date range, or both?
+2. Should locations replace ZIP code as the main user preference, or should ZIP
+   code remain the required onboarding field?
+3. Should Astronomy Engine be added as a Python dependency now, or should the
+   first phase use only USNO and IMCCE APIs?
+4. Should the first eclipse implementation use IMCCE as the primary source and
+   Astronomy Engine as a cross-check, or the reverse?
+5. Should weather/aurora conditions be included in the initial event result or
+   added as a later observation-quality feature?
+6. Are email notifications required in the first release, or only saved events?
+7. What date range and geographic accuracy are acceptable for asteroid/comet
+   events?
+
+Recommended default decisions:
+- Start with a 30-day upcoming-events view plus optional year selection.
+- Keep ZIP code for compatibility, but create a persistent Location model.
+- Use Astronomy Engine for local calculations and USNO/IMCCE for validation and
+  authoritative event metadata.
+- Add weather and aurora after core astronomical event correctness is proven.
+- Defer email notifications until saved events and caching work reliably.
+
+
+OFFICIAL REFERENCES
+-------------------
+
+- USNO API documentation:
+  https://aa.usno.navy.mil/data/api.html
+- Astronomy Engine:
+  https://github.com/cosinekitty/astronomy
+- IMCCE OPALE API:
+  https://opale.imcce.fr/webservices/api.html
+- NASA/JPL Close Approach API:
+  https://ssd-api.jpl.nasa.gov/doc/cad.html
+- NASA/JPL Horizons:
+  https://ssd-api.jpl.nasa.gov/doc/horizons.html
+- Open-Meteo forecast documentation:
+  https://open-meteo.com/en/docs
+- NOAA SWPC JSON feeds:
+  https://services.swpc.noaa.gov/json/
+
+
+HANDOFF RULE
+------------
+
+Before implementing a task, the next agent must:
+1. Read this file.
+2. Inspect the current files listed above rather than assuming the repository
+   still matches this handoff.
+3. Choose one task or vertical slice.
+4. Write failing tests for new behavior before implementation.
+5. Keep the account system and current constellation homepage working.
+6. Run the relevant tests and a live smoke test before moving to the next slice.

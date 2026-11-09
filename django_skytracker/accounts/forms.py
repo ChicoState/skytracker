@@ -5,7 +5,7 @@ from django.contrib.auth.forms import UserChangeForm, UserCreationForm
 from django.contrib.auth import password_validation
 from django.core.exceptions import ValidationError
 
-from .models import User
+from .models import Location, SavedEvent, User
 
 
 class AccountDetailsForm(forms.ModelForm):
@@ -62,6 +62,63 @@ class SignupForm(AccountDetailsForm):
         if commit:
             user.save()
         return user
+
+
+class PasswordResetForm(forms.Form):
+    email = forms.EmailField(label="Account email")
+    new_password1 = forms.CharField(label="New password", strip=False, widget=forms.PasswordInput)
+    new_password2 = forms.CharField(label="Confirm new password", strip=False, widget=forms.PasswordInput)
+
+    def clean_email(self):
+        email = self.cleaned_data["email"].lower()
+        try:
+            self.user = User.objects.get(email__iexact=email)
+        except User.DoesNotExist:
+            raise ValidationError("No account was found with that email address.")
+        return email
+
+    def clean(self):
+        cleaned_data = super().clean()
+        password1 = cleaned_data.get("new_password1")
+        password2 = cleaned_data.get("new_password2")
+        if password1 and password1 != password2:
+            self.add_error("new_password2", "The two passwords do not match.")
+        if password1 and hasattr(self, "user"):
+            password_validation.validate_password(password1, self.user)
+        return cleaned_data
+
+    def save(self):
+        self.user.set_password(self.cleaned_data["new_password1"])
+        self.user.save(update_fields=["password"])
+        return self.user
+
+
+class SavedEventForm(forms.ModelForm):
+    class Meta:
+        model = SavedEvent
+        fields = ("event_id", "label")
+
+    def clean_event_id(self):
+        return self.cleaned_data["event_id"].strip()
+
+
+class LocationForm(forms.ModelForm):
+    class Meta:
+        model = Location
+        fields = ("label", "latitude", "longitude", "elevation_meters", "timezone")
+        widgets = {
+            "latitude": forms.NumberInput(attrs={"step": "0.00001", "min": "-90", "max": "90"}),
+            "longitude": forms.NumberInput(attrs={"step": "0.00001", "min": "-180", "max": "180"}),
+            "elevation_meters": forms.NumberInput(attrs={"step": "0.01"}),
+        }
+
+    def clean_timezone(self):
+        timezone = self.cleaned_data["timezone"]
+        try:
+            ZoneInfo(timezone)
+        except ZoneInfoNotFoundError:
+            raise ValidationError("Use an IANA timezone, such as America/Los_Angeles.")
+        return timezone
 
 
 class AdminUserCreationForm(UserCreationForm):

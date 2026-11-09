@@ -42,6 +42,9 @@ RUN --mount=type=cache,target=/root/.cache/pip \
 # Switch to the non-privileged user to run the application.
 USER appuser
 
+# Copy the constellation API integration used by the Django homepage.
+COPY implementation/ ./implementation/
+
 # Copy the source code into the container.
 COPY . .
 

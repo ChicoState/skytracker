@@ -37,8 +37,8 @@ docker compose exec server python manage.py test
 - Always collect ZIP code and birth date before creating an account.
 - Always restrict future saved data with a foreign key to `settings.AUTH_USER_MODEL`.
 - Do not use the legacy JSON storage for accounts.
-- Password reset email delivery and production rate limiting require deployment
-  configuration and are intentionally not enabled in this initial slice.
+- Password reset is currently handled directly in the application without email
+  delivery or reset-token storage.
 
 ## Success criteria
 
@@ -46,3 +46,16 @@ docker compose exec server python manage.py test
 - Email is the authentication identifier and is unique without regard to case.
 - Unauthenticated visitors are redirected away from the profile page.
 - Tests cover account creation, login, logout, and profile access.
+
+## Password recovery
+
+The login page includes a “Forgot your password?” link. A person enters the
+email address for an existing account and chooses a new password directly.
+No reset email, token, or email-provider configuration is used.
+
+## Saved events
+
+Authenticated users can save and delete their own event records at
+`/accounts/saved-events/`. Each record stores an application event identifier
+and an optional label. Records are linked to the account with a foreign key;
+queries and deletes are restricted to the logged-in owner.

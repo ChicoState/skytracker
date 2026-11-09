@@ -1,0 +1,92 @@
+.constellation-filters {
+  border: 1px solid #59636d;
+  border-radius: 0.5rem;
+  background: #111820;
+  color: #eef3f7;
+  padding: 1rem;
+}
+
+.constellation-filters__title {
+  margin: 0 0 1rem;
+  font-size: 1.125rem;
+}
+
+.constellation-filters__field {
+  display: grid;
+  gap: 0.4rem;
+  margin-top: 0.9rem;
+}
+
+.constellation-filters__field:first-of-type {
+  margin-top: 0;
+}
+
+.constellation-filters input,
+.constellation-filters select,
+.constellation-filters button {
+  min-height: 2.6rem;
+  border-radius: 0.3rem;
+  font: inherit;
+}
+
+.constellation-filters input,
+.constellation-filters select {
+  border: 1px solid #7a8792;
+  background: #0b1015;
+  color: inherit;
+  padding: 0.45rem 0.65rem;
+}
+
+.constellation-filters__meta {
+  color: #b8c4ce;
+  font-size: 0.9rem;
+}
+
+.constellation-filters button {
+  width: 100%;
+  margin-top: 1rem;
+  border: 1px solid #5ca7d8;
+  background: transparent;
+  color: #b9e4ff;
+  cursor: pointer;
+}
+
+.constellation-filters button:hover,
+.constellation-filters button:focus-visible {
+  background: #173248;
+}
+
+.filters-preview {
+  min-height: 100vh;
+  margin: 0;
+  background: #070b0f;
+  color: #eef3f7;
+  font-family: system-ui, sans-serif;
+}
+
+.filters-preview__content {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(16rem, 23rem);
+  gap: 2rem;
+  max-width: 70rem;
+  margin: 0 auto;
+  padding: 3rem 1.5rem;
+}
+
+.filters-preview__eyebrow {
+  color: #8fd3ff;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.filters-preview__selection {
+  margin-top: 2rem;
+  color: #b8c4ce;
+}
+
+@media (max-width: 44rem) {
+  .filters-preview__content {
+    grid-template-columns: 1fr;
+  }
+}

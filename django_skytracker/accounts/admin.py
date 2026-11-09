@@ -2,7 +2,21 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 
 from .forms import AdminUserChangeForm, AdminUserCreationForm
-from .models import User
+from .models import Location, SavedEvent, User
+
+
+@admin.register(Location)
+class LocationAdmin(admin.ModelAdmin):
+    list_display = ("label", "owner", "latitude", "longitude", "timezone", "updated_at")
+    list_filter = ("timezone", "source")
+    search_fields = ("label", "owner__email")
+
+
+@admin.register(SavedEvent)
+class SavedEventAdmin(admin.ModelAdmin):
+    list_display = ("event_id", "label", "owner", "created_at")
+    list_filter = ("created_at",)
+    search_fields = ("event_id", "label", "owner__email")
 
 
 @admin.register(User)

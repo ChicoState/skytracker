@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sky Tracker demo</title>
+  <style>
+    body { max-width: 42rem; margin: 2rem auto; padding: 0 1rem; font: 1rem/1.5 system-ui, sans-serif; }
+    form { display: flex; flex-wrap: wrap; gap: .5rem; margin: 1rem 0; }
+    label { width: 100%; }
+    input { flex: 1 1 14rem; padding: .4rem; font: inherit; }
+    button { padding: .4rem .8rem; font: inherit; }
+    .error { color: #a00000; }
+    li { margin: .15rem 0; }
+    small { color: #444; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Sky Tracker demo</h1>
+    <form method="get">
+      <label for="city">City or latitude,longitude</label>
+      <input id="city" name="city" type="text" value="{{ city }}" placeholder="Chico, CA" maxlength="120" required>
+      <button type="submit">Find constellations</button>
+    </form>
+
+    {% if error %}<p class="error" role="alert">{{ error }}</p>{% endif %}
+
+    {% if report %}
+      <h2>{{ report.label }}</h2>
+      <p>Sky at {{ report.instant|date:"Y-m-d H:i:s" }} UTC · {{ report.latitude|floatformat:4 }}, {{ report.longitude|floatformat:4 }}</p>
+      <h3>Constellations above the horizon ({{ report.visible|length }} of {{ report.constellation_count }} reference points)</h3>
+      {% if report.visible %}
+        <ul>
+          {% for name, altitude in report.visible %}
+            <li>{{ name }} — {{ altitude|floatformat:1 }}° above the horizon</li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p>No constellation reference points are above the horizon.</p>
+      {% endif %}
+
+      <h3>Moon rise and set</h3>
+      {% if report.moon_events %}
+        <ul>
+          {% for clock, event in report.moon_events %}
+            <li>{{ clock }} {{ event }} (UT1, approximately UTC)</li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p>No Moon rise or set on this UTC date.</p>
+      {% endif %}
+      <p><small>Constellation positions use approximate reference points. Daylight, weather, obstructions, and constellation edges are not checked.</small></p>
+      <p><small>Data: Open-Meteo geocoding, USNO sidereal time and Moon events, d3-celestial constellation catalog via GitHub.</small></p>
+    {% endif %}
+  </main>
+</body>
+</html>

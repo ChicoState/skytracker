@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+python="$repo_dir/implementation/.venv/bin/python"
+
+if [[ ! -x "$python" ]]; then
+  python3 -m venv --without-pip "$repo_dir/implementation/.venv"
+fi
+
+if [[ $# -eq 0 ]]; then
+  read -r -p "Location (city or latitude,longitude): " location
+  set -- "$location"
+fi
+
+exec "$python" "$repo_dir/implementation/sky_demo.py" "$@"
